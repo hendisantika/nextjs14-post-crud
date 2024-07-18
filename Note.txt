@@ -1,0 +1,141 @@
+Now I will make an example about CRUD(create, read, update, delete) in NextJS 13. Share with everyone how to set up routes to locate functions in NextJS 13.
+Here I use the latest version of NextJS 13
++ app/libs/index.ts : build the libraries you want
++ app/types/index.ts : build interfaces
++ api/post/route.ts : GET (Get list of all posts), POST (Add a post)
++ api/post/[id]/route.ts :
+ GET : get article by ID
+ PUT : update article
+ DELETE: delete the post
++ app/post/page.tsx: Displays list of posts
++ app/post/create/page.tsx : Form to add posts
++ app/post/edit/[id]/page.tsx : Form to edit posts from ID
++ app/post/read/[id]/page.tsx : Form displays posts from ID
++ app/components/Header.ts: design the header interface
++ app/components/Post.ts: displays market share from data of a post
++ app/layout.tsx : project layout interface
++ app/page.tsx : home page interface
+
+Okay let's start building a project
+# Create a Project
+
++ app/libs/index.ts : The code below, we handle API requests
+export const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
++ app/types/index.ts: set the properties of a Model, using the interface in typescript, need to configure properties of a certain data type
+export interface UserModel{
+ id:number,
+ name:string,
+}
+export interface PostModel{
+ id:number,
+ title:string,
+ keyword:string,
+ des:string,
+ slug:string,
+ image:string,
+ publish:number,
+ content:string,
+ created_at:string
+ user:UserModel,
+ deletePost:(id: number)=> void;
+}
+export interface PostAddModel{
+ title:string,
+ content:string
+}
+
++ api/post/route.ts: We need to build a route, to request Api, here we need to install 2 methods (GET, POST)
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function GET() {
+ const res = await fetch(process.env.PATH_URL_BACKEND+'/api/posts', {
+ headers: {
+ 'Content-Type': 'application/json',
+ },
+ })
+ const result = await res.json()
+ return NextResponse.json({ result })
+}
+export async function POST(request: NextRequest) {
+ const body = await request.json()
+ const res = await fetch(process.env.PATH_URL_BACKEND+'/api/posts', {
+ method: 'POST',
+ headers: {
+ 'Content-Type': 'application/json',
+ },
+ body: JSON.stringify(body),
+ })
+ const data = await res.json();
+ return NextResponse.json(data)
+
+}
+
+process.env.PATH_URL_BACKEND : is the path to your BackEnd address, you create an .env file and use configuration variables for the project.
+
++ api/post/[id]/route.ts: In this route we use methods such as (GET, PUT, DELETE), as I said above
+GET: used to get posts by ID
+PUT : update posts from ID
+DELETE : delete posts from ID
+import { NextRequest, NextResponse } from 'next/server'
+export async function GET(request : NextRequest,{ params }: { params: { id: number } }) {
+ const res = await fetch(process.env.PATH_URL_BACKEND+`/api/posts/${params.id}`, {
+ next: { revalidate: 10 } ,
+ headers: {
+ 'Content-Type': 'application/json',
+ },
+ })
+ const result = await res.json()
+ return NextResponse.json(result)
+}
+export async function PUT(request: NextRequest,{ params }: { params: { id: number } }) {
+ const body = await request.json()
+ const res = await fetch(process.env.PATH_URL_BACKEND+`/api/posts/${params.id}`, {
+ method: 'PUT',
+ headers: {
+ 'Content-Type': 'application/json',
+ },
+ body: JSON.stringify(body),
+ })
+ const data = await res.json();
+ return NextResponse.json(data)
+
+}
+export async function DELETE(request: NextRequest,{ params }: { params: { id: number } }) {
+ const res = await fetch(process.env.PATH_URL_BACKEND+`/api/posts/${params.id}`, {
+ next: { revalidate: 10 },
+ method: 'DELETE',
+ headers: {
+ 'Content-Type': 'application/json',
+ },
+ })
+ const data = await res.json();
+ return NextResponse.json(data)
+
+}
+
+You can look at the code above, I use next: { revalidate: 10 }, it is used to save data memory within 10 seconds, depending on your application, configure it.
+
++ app/post/page.tsx : Displays a list of posts for users to see
+"use client";
+import React,{useEffect, useState} from "react";
+import useSWR from "swr";
+import { fetcher } from "../libs";
+import Post from "../components/Post";
+import { PostModel } from "../types";
+import Link from "next/link";
+
+export default function Posts() {
+ const [posts,setPosts] = useState<PostModel[]>([]);
+ const { data, error, isLoading } = useSWR<any>(`/api/posts`, fetcher);
+ useEffect(()=>{
+ if(data && data.result.data)
+ {
+ console.log(data.result.data);
+ setPosts(data.result.data);
+ }
+ },[data,isLoading]);
+ if (error) return <div>Failed to load</div>;
+ if (isLoading) return <div>Loading...</div>;
+ if (!data) return null;
+ let delete_Post : PostModel['deletePost']= async (i
